@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>💰 Mini Monopoly Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      grid-template-rows: repeat(4, 100px);
+      margin: 20px auto;
+      width: 400px;
+      height: 400px;
+      border: 2px solid #000;
+    }
+
+    .tile {
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: #fff;
+      font-size: 12px;
+      padding: 5px;
+      position: relative;
+    }
+
+    .tile.owned {
+      background: #c8e6c9;
+    }
+
+    .tile.event {
+      background: #fff9c4;
+    }
+
+    .player {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      font-size: 20px;
+    }
+
+    #controls {
+      margin-top: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    #log {
+      margin-top: 15px;
+      font-size: 16px;
+      min-height: 40px;
+    }
+
+    #money {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <h1>💰 Mini Monopoly Game</h1>
+  <div id="money">Money: $1500</div>
+  <div id="board"></div>
+
+  <div id="controls">
+    <button onclick="rollDice()">🎲 Roll Dice</button>
+    <button id="buyBtn" style="display:none;" onclick="buyProperty()">Buy</button>
+    <button id="skipBtn" style="display:none;" onclick="skipProperty()">Skip</button>
+    <p id="log">Click the dice to start!</p>
+  </div>
+
+  <script>
+    const board = document.getElementById('board');
+    const log = document.getElementById('log');
+    const moneyDisplay = document.getElementById('money');
+    const buyBtn = document.getElementById('buyBtn');
+    const skipBtn = document.getElementById('skipBtn');
+
+    const properties = [
+      { name: "Park Place", price: 200 },
+      { name: "Broadwalk", price: 300 },
+      { name: "Baltic Ave", price: 150 },
+      { name: "Reading RR", price: 100 },
+      { name: "Chance", event: true },
+      { name: "Water Works", price: 180 },
+      { name: "Electric Co.", price: 180 },
+      { name: "St. James Pl", price: 220 },
+      { name: "Go", price: 0 },
+      { name: "Community Chest", event: true },
+      { name: "Vermont Ave", price: 120 },
+      { name: "Tennessee Ave", price: 190 },
+      { name: "Free Parking", price: 0 },
+      { name: "Illinois Ave", price: 250 },
+      { name: "Tax Tile", price: 0, tax: 100 },
+      { name: "Marvin Gardens", price: 280 }
+    ];
+
+    const tiles = [];
+    let position = 0;
+    let owned = [];
+    let money = 1500;
+
+    // Setup board
+    for (let i = 0; i < 16; i++) {
+      const tile = document.createElement('div');
+      tile.classList.add('tile');
+      tile.dataset.index = i;
+
+      const prop = properties[i];
+      tile.innerHTML = `<strong>${prop.name}</strong><br>${prop.event ? "Event" : (prop.price ? `$${prop.price}` : "")}`;
+
+      if (prop.event) tile.classList.add('event');
+
+      board.appendChild(tile);
+      tiles.push(tile);
+    }
+
+    function updateMoney() {
+      moneyDisplay.textContent = `Money: $${money}`;
+    }
+
+    function renderPlayer() {
+      tiles.forEach(tile => {
+        const p = tile.querySelector('.player');
+        if (p) tile.removeChild(p);
+      });
+
+      const player = document.createElement('div');
+      player.classList.add('player');
+      player.textContent = '🚶';
+      tiles[position].appendChild(player);
+    }
+
+    function rollDice() {
+      hideBuySkip();
+      const roll = Math.floor(Math.random() * 6) + 1;
+      log.textContent = `You rolled a ${roll}!`;
+
+      position = (position + roll) % tiles.length;
+      renderPlayer();
+
+      handleTile(position);
+    }
+
+    function handleTile(pos) {
+      const tile = properties[pos];
+      const tileDiv = tiles[pos];
+
+      if (tile.event) {
+        const rand = Math.random();
+        if (rand > 0.5) {
+          const found = Math.floor(Math.random() * 200) + 50;
+          money += found;
+          log.textContent += ` Lucky you! You found $${found}.`;
+        } else {
+          const lost = Math.floor(Math.random() * 200) + 50;
+          money -= lost;
+          log.textContent += ` Oh no! You lost $${lost}.`;
+        }
+        updateMoney();
+        checkBankruptcy();
+        return;
+      }
+
+      if (tile.tax) {
+        money -= tile.tax;
+        log.textContent += ` You paid tax of $${tile.tax}.`;
+        updateMoney();
+        checkBankruptcy();
+        return;
+      }
+
+      if (owned.includes(pos)) {
+        log.textContent += ` You landed on your own property. No rent.`;
+        return;
+      }
+
+      if (tile.price > 0) {
+        log.textContent += ` Do you want to buy "${tile.name}" for $${tile.price}?`;
+        buyBtn.style.display = 'inline-block';
+        skipBtn.style.display = 'inline-block';
+      } else {
+        log.textContent += ` You landed on ${tile.name}.`;
+      }
+    }
+
+    function buyProperty() {
+      const prop = properties[position];
+      if (money >= prop.price) {
+        money -= prop.price;
+        owned.push(position);
+        tiles[position].classList.add('owned');
+        log.textContent = `You bought "${prop.name}"!`;
+        updateMoney();
+      } else {
+        log.textContent = `Not enough money to buy "${prop.name}".`;
+      }
+      hideBuySkip();
+      checkBankruptcy();
+    }
+
+    function skipProperty() {
+      log.textContent = `You skipped buying "${properties[position].name}".`;
+      hideBuySkip();
+    }
+
+    function hideBuySkip() {
+      buyBtn.style.display = 'none';
+      skipBtn.style.display = 'none';
+    }
+
+    function checkBankruptcy() {
+      if (money <= 0) {
+        alert("💀 You're bankrupt! Game over.");
+        location.reload(); // reload the game
+      }
+    }
+
+    // Init
+    renderPlayer();
+    updateMoney();
+  </script>
+
+</body>
+</html>
