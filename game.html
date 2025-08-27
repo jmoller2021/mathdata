@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>🌴 Floridaopoly</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     * {
       box-sizing: border-box;
@@ -188,6 +188,11 @@
       tiles[position].appendChild(player);
     }
 
+    function hideBuySkip() {
+      buyBtn.style.display = 'none';
+      skipBtn.style.display = 'none';
+    }
+
     function rollDice() {
       hideBuySkip();
       const roll = Math.floor(Math.random() * 6) + 1;
@@ -259,4 +264,20 @@
     function skipProperty() {
       log.textContent = `You skipped buying "${floridaProperties[position].name}". 🏃‍♂️`;
       hideBuySkip();
-   
+    }
+
+    function checkBankruptcy() {
+      if (money < 0) {
+        log.textContent = "💥 You are bankrupt! Game over.";
+        buyBtn.disabled = true;
+        skipBtn.disabled = true;
+      }
+    }
+
+    // Initialize
+    renderPlayer();
+    updateMoney();
+  </script>
+
+</body>
+</html>
