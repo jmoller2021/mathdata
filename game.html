@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>🌴 Floridaopoly</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * {
       box-sizing: border-box;
@@ -188,11 +188,6 @@
       tiles[position].appendChild(player);
     }
 
-    function hideBuySkip() {
-      buyBtn.style.display = 'none';
-      skipBtn.style.display = 'none';
-    }
-
     function rollDice() {
       hideBuySkip();
       const roll = Math.floor(Math.random() * 6) + 1;
@@ -206,7 +201,6 @@
 
     function handleTile(pos) {
       const tile = floridaProperties[pos];
-      const tileDiv = tiles[pos];
 
       if (tile.event) {
         const rand = Math.random();
@@ -254,6 +248,7 @@
         tiles[position].classList.add('owned');
         log.textContent = `🏠 You now own "${prop.name}"! Time to flip it!`;
         updateMoney();
+        checkWinCondition();
       } else {
         log.textContent = `🙅 Not enough money to buy "${prop.name}".`;
       }
@@ -266,18 +261,17 @@
       hideBuySkip();
     }
 
+    function hideBuySkip() {
+      buyBtn.style.display = 'none';
+      skipBtn.style.display = 'none';
+    }
+
     function checkBankruptcy() {
-      if (money < 0) {
-        log.textContent = "💥 You are bankrupt! Game over.";
-        buyBtn.disabled = true;
-        skipBtn.disabled = true;
+      if (money <= 0) {
+        endGame("💀 You're bankrupt in Florida! Better luck next vacation.");
       }
     }
 
-    // Initialize
-    renderPlayer();
-    updateMoney();
-  </script>
-
-</body>
-</html>
+    function checkWinCondition() {
+      const buyableTiles = floridaProperties
+        .map((t
