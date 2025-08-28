@@ -1,41 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🌴 Floridaopoly - Multiplayer</title>
+  <meta charset="UTF-8">
+  <title>🌴 Floridaopoly</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(to bottom, #e0f7fa, #fffde7);
       text-align: center;
       margin: 0;
-      padding: 10px;
+      padding: 0 10px;
     }
-    h1 { color: #00695c; font-size: 2em; margin: 0.5em 0; }
-    #money, #log, #turn { margin: 10px 0; font-size: 1.1em; }
+
+    h1 {
+      color: #00695c;
+      margin-top: 20px;
+      font-size: 1.8em;
+    }
+
+    #money {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 10px 0;
+      color: #004d40;
+    }
+
     #board {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      max-width: 600px;
-      margin: 10px auto;
+      grid-auto-rows: 100px;
+      max-width: 100%;
+      margin: 0 auto;
+      gap: 5px;
     }
+
     .tile {
-      background: white;
-      border: 1px solid #ccc;
+      background: #ffffff;
+      border: 1px solid #b2dfdb;
       border-radius: 6px;
       padding: 5px;
-      font-size: 0.85em;
+      font-size: 0.9em;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       position: relative;
-      min-height: 80px;
     }
-    .tile.owned { background: #a5d6a7; }
-    .tile.event { background: #fff59d; }
-    .tile .players { position: absolute; bottom: 5px; left: 5px; font-size: 1.2em; }
+
+    .tile.owned {
+      background: #a5d6a7;
+    }
+
+    .tile.event {
+      background: #fff59d;
+    }
+
+    .player {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      font-size: 1.5em;
+    }
+
+    #controls {
+      margin: 20px 0;
+    }
+
     button {
-      padding: 10px 16px;
+      padding: 12px 20px;
       font-size: 1em;
       margin: 5px;
       border: none;
@@ -44,35 +81,62 @@
       color: white;
       cursor: pointer;
     }
-    button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
+
+    button:hover,
+    button:focus {
+      background-color: #00695c;
+      outline: none;
     }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    #log {
+      margin-top: 15px;
+      font-size: 1em;
+      min-height: 40px;
+      color: #333;
+    }
+
     @media (max-width: 600px) {
-      #board { grid-template-columns: repeat(2, 1fr); }
+      #board {
+        grid-template-columns: repeat(2, 1fr);
+        grid-auto-rows: 100px;
+      }
+
+      .tile {
+        font-size: 0.8em;
+      }
+
+      button {
+        width: 90%;
+        font-size: 1em;
+      }
     }
   </style>
 </head>
 <body>
 
   <h1>🌴 Floridaopoly</h1>
-  <div id="turn">Current Turn: Player 1 🧢</div>
-  <div id="money"></div>
-  <div id="board"></div>
+  <div id="money">Money: $1500</div>
+  <div id="board" role="grid" aria-label="Floridaopoly game board"></div>
 
-  <div>
-    <button onclick="rollDice()" id="rollBtn">🎲 Roll Dice</button>
-    <button id="buyBtn" onclick="buyProperty()" style="display:none;">Buy</button>
-    <button id="skipBtn" onclick="skipProperty()" style="display:none;">Skip</button>
+  <div id="controls">
+    <button onclick="rollDice()" aria-label="Roll the dice">🎲 Roll Dice</button>
+    <button id="buyBtn" onclick="buyProperty()" style="display:none;" aria-label="Buy the current property">Buy</button>
+    <button id="skipBtn" onclick="skipProperty()" style="display:none;" aria-label="Skip buying the property">Skip</button>
+    <p id="log" aria-live="polite">Click the dice to start exploring Florida!</p>
   </div>
 
-  <div id="log" aria-live="polite">Click roll to begin.</div>
-
   <script>
-    const NUM_PLAYERS = 4;
-    const START_MONEY = 1500;
+    const board = document.getElementById('board');
+    const log = document.getElementById('log');
+    const moneyDisplay = document.getElementById('money');
+    const buyBtn = document.getElementById('buyBtn');
+    const skipBtn = document.getElementById('skipBtn');
 
-    const boardData = [
+    const floridaProperties = [
       { name: "🏝️ Miami Beach", price: 300 },
       { name: "🎢 Orlando", price: 280 },
       { name: "🌞 Key West", price: 260 },
@@ -81,149 +145,163 @@
       { name: "🌴 Everglades", price: 220 },
       { name: "🐊 Gator Farm", price: 200 },
       { name: "🎣 Clearwater", price: 180 },
-      { name: "🚗 Jacksonville (Start)", price: 0 },
+      { name: "🚗 Start: Jacksonville", price: 0 },
       { name: "📦 Florida Man News", event: true },
       { name: "🏕️ Ocala Forest", price: 150 },
       { name: "🎨 St. Pete", price: 170 },
       { name: "🚤 Tampa Bay", price: 190 },
       { name: "🎓 Gainesville", price: 160 },
-      { name: "💸 State Tax Office", tax: 100 },
+      { name: "💸 State Tax Office", price: 0, tax: 100 },
       { name: "🐬 Naples", price: 250 }
     ];
 
-    const playerIcons = ['🧢', '👒', '🎩', '🪖'];
-    const players = Array.from({ length: NUM_PLAYERS }, (_, i) => ({
-      name: `Player ${i + 1}`,
-      icon: playerIcons[i],
-      position: 0,
-      money: START_MONEY,
-      properties: [],
-      bankrupt: false
-    }));
-
-    let currentPlayerIndex = 0;
-    const board = document.getElementById('board');
-    const log = document.getElementById('log');
-    const moneyDiv = document.getElementById('money');
-    const turnDiv = document.getElementById('turn');
-    const buyBtn = document.getElementById('buyBtn');
-    const skipBtn = document.getElementById('skipBtn');
-    const rollBtn = document.getElementById('rollBtn');
-
     const tiles = [];
+    let position = 0;
+    let owned = [];
+    let money = 1500;
 
-    function setupBoard() {
-      board.innerHTML = '';
-      boardData.forEach((tile, index) => {
-        const div = document.createElement('div');
-        div.classList.add('tile');
-        if (tile.event) div.classList.add('event');
-        div.dataset.index = index;
-        div.innerHTML = `<strong>${tile.name}</strong><br>${tile.price ? '$' + tile.price : tile.tax ? 'Tax: $' + tile.tax : tile.event ? '🎲 Event' : ''}<div class="players"></div>`;
-        board.appendChild(div);
-        tiles.push(div);
-      });
+    // Create board
+    floridaProperties.forEach((prop, i) => {
+      const tile = document.createElement('div');
+      tile.classList.add('tile');
+      tile.dataset.index = i;
+      tile.setAttribute('role', 'gridcell');
+      tile.innerHTML = `<strong>${prop.name}</strong><br>${prop.event ? "🎲 Event" : (prop.price ? `$${prop.price}` : "")}`;
+      if (prop.event) tile.classList.add('event');
+      board.appendChild(tile);
+      tiles.push(tile);
+    });
+
+    function updateMoney() {
+      moneyDisplay.textContent = `Money: $${money}`;
     }
 
-    function renderPlayers() {
-      tiles.forEach(tile => tile.querySelector('.players').innerHTML = '');
-
-      players.forEach((player, index) => {
-        if (!player.bankrupt) {
-          const pos = player.position;
-          const icon = document.createElement('span');
-          icon.textContent = player.icon;
-          tiles[pos].querySelector('.players').appendChild(icon);
-        }
+    function renderPlayer() {
+      tiles.forEach(tile => {
+        const p = tile.querySelector('.player');
+        if (p) tile.removeChild(p);
       });
-    }
 
-    function updateUI() {
-      const player = players[currentPlayerIndex];
-      moneyDiv.textContent = `${player.name}'s Money: $${player.money}`;
-      turnDiv.textContent = `Current Turn: ${player.name} ${player.icon}`;
+      const player = document.createElement('div');
+      player.classList.add('player');
+      player.textContent = '🧢';
+      tiles[position].appendChild(player);
     }
 
     function rollDice() {
       hideBuySkip();
-      const player = players[currentPlayerIndex];
-      if (player.bankrupt) {
-        nextTurn();
-        return;
-      }
-
       const roll = Math.floor(Math.random() * 6) + 1;
-      log.textContent = `${player.name} rolled a ${roll}`;
-      player.position = (player.position + roll) % boardData.length;
-      renderPlayers();
-      handleTile(player);
+      log.textContent = `You rolled a ${roll}!`;
+
+      position = (position + roll) % tiles.length;
+      renderPlayer();
+
+      handleTile(position);
     }
 
-    function handleTile(player) {
-      const tile = boardData[player.position];
-      const index = player.position;
+    function handleTile(pos) {
+      const tile = floridaProperties[pos];
 
       if (tile.event) {
         const rand = Math.random();
-        const amount = Math.floor(Math.random() * 200) + 50;
         if (rand > 0.5) {
-          player.money += amount;
-          log.textContent += ` — Found $${amount} in the sand! 🏖️`;
+          const found = Math.floor(Math.random() * 200) + 50;
+          money += found;
+          log.textContent += ` 🐬 A dolphin gifted you $${found}!`;
         } else {
-          player.money -= amount;
-          log.textContent += ` — Lost $${amount} from a gator fine! 🐊`;
+          const lost = Math.floor(Math.random() * 200) + 50;
+          money -= lost;
+          log.textContent += ` 🐊 You stepped on a gator trap and lost $${lost}.`;
         }
-        updateUI();
-        checkBankruptcy(player);
-        setTimeout(nextTurn, 1000);
+        updateMoney();
+        checkBankruptcy();
         return;
       }
 
       if (tile.tax) {
-        player.money -= tile.tax;
-        log.textContent += ` — Paid tax of $${tile.tax}.`;
-        updateUI();
-        checkBankruptcy(player);
-        setTimeout(nextTurn, 1000);
+        money -= tile.tax;
+        log.textContent += ` 💸 You paid $${tile.tax} in state taxes.`;
+        updateMoney();
+        checkBankruptcy();
         return;
       }
 
-      const alreadyOwned = players.some(p => p.properties.includes(index));
-      if (alreadyOwned) {
-        log.textContent += ` — This place is already owned. 🏠`;
-        setTimeout(nextTurn, 1000);
+      if (owned.includes(pos)) {
+        log.textContent += ` You landed on your own turf in ${tile.name}. 🏡`;
         return;
       }
 
       if (tile.price > 0) {
-        log.textContent += ` — Would you like to buy "${tile.name}" for $${tile.price}?`;
+        log.textContent += ` Do you want to buy "${tile.name}" for $${tile.price}?`;
         buyBtn.style.display = 'inline-block';
         skipBtn.style.display = 'inline-block';
       } else {
-        log.textContent += ` — Just hangin' in ${tile.name}.`;
-        setTimeout(nextTurn, 1000);
+        log.textContent += ` You’re just chillin' in ${tile.name}. 🍹`;
       }
     }
 
     function buyProperty() {
-      const player = players[currentPlayerIndex];
-      const tile = boardData[player.position];
-      const index = player.position;
-
-      if (player.money >= tile.price) {
-        player.money -= tile.price;
-        player.properties.push(index);
-        tiles[index].classList.add('owned');
-        log.textContent = `🏠 ${player.name} bought ${tile.name}!`;
-        updateUI();
-        checkWin(player);
+      const prop = floridaProperties[position];
+      if (money >= prop.price) {
+        money -= prop.price;
+        owned.push(position);
+        tiles[position].classList.add('owned');
+        log.textContent = `🏠 You now own "${prop.name}"! Time to flip it!`;
+        updateMoney();
+        checkWinCondition();
       } else {
-        log.textContent = `💸 ${player.name} can’t afford ${tile.name}`;
+        log.textContent = `🙅 Not enough money to buy "${prop.name}".`;
       }
-
       hideBuySkip();
-      setTimeout(nextTurn, 1000);
+      checkBankruptcy();
     }
 
     function skipProperty() {
-      log.textContent = `
+      log.textContent = `You skipped buying "${floridaProperties[position].name}". 🏃‍♂️`;
+      hideBuySkip();
+    }
+
+    function hideBuySkip() {
+      buyBtn.style.display = 'none';
+      skipBtn.style.display = 'none';
+    }
+
+    function checkBankruptcy() {
+      if (money <= 0) {
+        endGame("💀 You're bankrupt in Florida! Better luck next vacation.");
+      }
+    }
+
+    function checkWinCondition() {
+      const buyableTiles = floridaProperties
+        .map((tile, index) => tile.price > 0 ? index : null)
+        .filter(index => index !== null);
+
+      const hasAll = buyableTiles.every(index => owned.includes(index));
+
+      if (hasAll) {
+        endGame("🌴 You now own all of Florida! YOU WIN! 🎉");
+      }
+    }
+
+    function endGame(message) {
+      log.textContent = message;
+      disableButtons();
+      setTimeout(() => alert(message), 200);
+    }
+
+    function disableButtons() {
+      document.querySelectorAll('button').forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = 0.6;
+        btn.style.cursor = 'not-allowed';
+      });
+    }
+
+    // Start game
+    renderPlayer();
+    updateMoney();
+  </script>
+
+</body>
+</html>
